@@ -2,3 +2,13 @@ packages:
   - packages/*
   - apps/*
   - apps/streamlit/niivue_component/frontend
+
+onlyBuiltDependencies:
+  - '@fortawesome/fontawesome-free'
+  - '@parcel/watcher'
+  - '@vscode/vsce-sign'
+  - cbor-extract
+  - core-js
+  - esbuild
+  - keytar
+  - sharp

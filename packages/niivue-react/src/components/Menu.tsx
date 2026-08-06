@@ -51,6 +51,14 @@ export const Menu = (props: AppProps & { appInfo?: AppInfo }) => {
   const tileSpacing = useSignal(settings.value.tileSpacing ?? DEFAULT_TILE_SPACING)
   const selectionActive = useSignal(false)
   const selectMultiple = useSignal(false)
+  // Opacity each overlay layer had before it was hidden via the Visibility
+  // submenu, keyed by layer index (1-based, matching nOverlays/openColorScale).
+  // Read back on re-show so toggling off/on round-trips to the same value.
+  const hiddenOverlayOpacity = useSignal<Record<number, number>>({})
+  // Bumped on every visibility toggle. isOverlayVisible reads opacity off a
+  // plain (non-signal) niivue layer object, so without this the Visibility
+  // submenu wouldn't know to re-render when opacity changes underneath it.
+  const overlayVisibilityVersion = useSignal(0)
 
   // Computed
   const isOverlay = computed(() => nvArraySelected.value[0]?.volumes?.length > 1)
@@ -226,6 +234,45 @@ export const Menu = (props: AppProps & { appInfo?: AppInfo }) => {
       nv.graphLineAlpha = 1.0
       nv.updateGLVolume()
     })
+  }
+
+  // Overlay layers are numbered 1..nOverlays for volumes (0 is the base
+  // volume) and 0..nOverlays-1 for mesh layers, matching openColorScale below.
+  const overlayLayerIndex = (overlayNumber: number) => (isMesh.value ? overlayNumber - 1 : overlayNumber)
+
+  const isOverlayVisible = (overlayNumber: number) => {
+    overlayVisibilityVersion.value // subscribe: re-run after each toggle
+    const nv = nvArraySelected.value[0]
+    const layerIndex = overlayLayerIndex(overlayNumber)
+    const layer = isMesh.value ? nv?.meshes?.[0]?.layers?.[layerIndex] : nv?.volumes?.[layerIndex]
+    return (layer?.opacity ?? 0) > 0
+  }
+
+  const toggleOverlayVisibility = (overlayNumber: number) => () => {
+    const layerIndex = overlayLayerIndex(overlayNumber)
+    const currentlyVisible = isOverlayVisible(overlayNumber)
+    const restoreOpacity = hiddenOverlayOpacity.value[overlayNumber] ?? 0.5
+    if (currentlyVisible) {
+      // Remember the opacity before zeroing it, so re-showing restores it
+      // rather than falling back to a default.
+      const layer = isMesh.value
+        ? nvArraySelected.value[0]?.meshes?.[0]?.layers?.[layerIndex]
+        : nvArraySelected.value[0]?.volumes?.[layerIndex]
+      const lastOpacity = layer?.opacity || restoreOpacity
+      hiddenOverlayOpacity.value = { ...hiddenOverlayOpacity.value, [overlayNumber]: lastOpacity }
+    }
+    const nextOpacity = currentlyVisible ? 0 : restoreOpacity
+    nvArraySelected.value.forEach((nv: ExtendedNiivue) => {
+      const layer = isMesh.value ? nv.meshes?.[0]?.layers?.[layerIndex] : nv.volumes?.[layerIndex]
+      if (!layer) return
+      if (isMesh.value) {
+        nv.setMeshLayerProperty(0, layerIndex, { opacity: nextOpacity })
+      } else {
+        nv.setVolume(layerIndex, { opacity: nextOpacity })
+      }
+      nv.updateGLVolume()
+    })
+    overlayVisibilityVersion.value++
   }
 
   const openColorScale = (overlayNumber: number) => () => {
@@ -692,6 +739,22 @@ export const Menu = (props: AppProps & { appInfo?: AppInfo }) => {
           <MenuEntry label="ImageOverlay" onClick={addOverlay} visible={isMesh} />
           <MenuEntry label="Replace" onClick={replaceLastVolume} visible={isOverlay} />
           <MenuEntry label="Remove" onClick={removeLastVolume} visible={isOverlay} />
+          {nOverlays.value > 0 && (
+            <>
+              <hr />
+              {Array.from({ length: nOverlays.value }, (_, i) => {
+                const overlayNumber = i + 1
+                return (
+                  <MenuEntry
+                    key={overlayNumber}
+                    label={`${isOverlayVisible(overlayNumber) ? '✓ ' : '  '}Overlay ${i + 1}`}
+                    onClick={toggleOverlayVisibility(overlayNumber)}
+                    keepOpen={true}
+                  />
+                )
+              })}
+            </>
+          )}
         </>
       ),
     },
