@@ -372,11 +372,7 @@
           ".mnc.gz",
           ".npy",
           ".npz"
-        ],
-        "icon": {
-          "light": "./language-icon.png",
-          "dark": "./language-icon.png"
-        }
+        ]
       }
     ],
     "configuration": {
