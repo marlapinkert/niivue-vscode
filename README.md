@@ -2,6 +2,8 @@
 
 [![Coverage](https://img.shields.io/endpoint?url=https://niivue.github.io/niivue-vscode/coverage/main/badge.json)](https://niivue.github.io/niivue-vscode/coverage/main/)
 
+Note: This is identical to the main branch of the github repo on August 6, 2026. I only forked because I wanted to implement a toggle option for my overlays (so I can quickly toggle which are hidden/shown). In the process, I deleted the automatic icon it uses, as I prefer my own custom ones that were being overwritten. Both features work for me. The below text is the original README of the project.
+
 **WebGL 2.0 medical image viewers for multiple platforms**
 
 This monorepo contains the [NiiVue](https://github.com/niivue/niivue) integration projects for VS Code, JupyterLab, web browsers, and Streamlit. View NIfTI files, meshes, tractography, and DICOM images with hardware-accelerated rendering across your favorite development environments.
